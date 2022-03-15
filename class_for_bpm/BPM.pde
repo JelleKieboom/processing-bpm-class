@@ -1,5 +1,5 @@
 /*
-  Beats Per Minute
+ Beats Per Minute
  
  Press 'i' to toggle the info window.
  Press 0 in the active window to 'reset' the timer
@@ -14,6 +14,12 @@ class BPM {
   float beatCount;
   boolean showInfo;
 
+  //helper variables to only run functions once until they reset
+  boolean doOnce;
+  float lastBeatCount;
+  int frameCounter;
+  int lastFrame;
+
   //we use these variables to be able to 'reset' the time whenever we want.
   float millis_runtime;
   float millis_start;
@@ -24,6 +30,12 @@ class BPM {
   boolean every_8;
   boolean every_16;
 
+  //helper booleans that turn true every n beats for 1 frame.
+  boolean every_2_once;
+  boolean every_4_once;
+  boolean every_8_once;
+  boolean every_16_once;
+
   BPM(float bpmTemp) {
     bpm = bpmTemp;
     triggerValue = 0;
@@ -31,12 +43,22 @@ class BPM {
     beatCount = 0;
     showInfo = false;
 
+    doOnce = false;
+    lastBeatCount = 0;
+    frameCounter = 0;
+    lastFrame = 0;
+
     millis_start = millis();
 
     every_2 = false;
     every_4 = false;
     every_8 = false;
     every_16 = false;
+
+    every_2_once = false;
+    every_4_once = false;
+    every_8_once = false;
+    every_16_once = false;
   }
 
   void run() {
@@ -44,15 +66,45 @@ class BPM {
     triggerValue = 60/bpm*1000;
     triggerNorm = millis_runtime%triggerValue/triggerValue;
     beatCount = millis_runtime/triggerValue;
+    frameCounter++;
 
-    every_2 = int(beatCount)%2==0;
-    every_4 = int(beatCount)%4==0;
-    every_8 = int(beatCount)%8==0;
-    every_16 = int(beatCount)%16==0;
+    checkBeatPeriods();
 
     if (showInfo) showInfo();
 
     checkKeyPresses();
+  }
+
+  void checkBeatPeriods() {
+    if (beatCount>1) { //skip the first beat where all of these booleans would be true
+      every_2 = int(beatCount)%2==0;
+      every_4 = int(beatCount)%4==0;
+      every_8 = int(beatCount)%8==0;
+      every_16 = int(beatCount)%16==0;
+    }
+
+    //after every second beat, check if 2, 4, 8 or 16 beats are passed
+    //if so, set the corresponding 'once' boolean to true for a 1 frame period
+    if (every_2 && doOnce == false) {
+      doOnce = true;
+      lastBeatCount = int(beatCount);
+      lastFrame = frameCounter;
+
+      every_2_once = every_2;
+      every_4_once = every_4;
+      every_8_once = every_8;
+      every_16_once = every_16;
+    }
+
+    //flip the 'once' booleans immediately after one frame
+    if (frameCounter != lastFrame) {
+      every_2_once = false;
+      every_4_once = false;
+      every_8_once = false;
+      every_16_once = false;
+    }
+    //reset the mechanism after one beat
+    if (int(lastBeatCount) != int(beatCount)) doOnce = false;
   }
 
   void showInfo() {
